@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+.time-slot {
+    transition: all 0.2s ease;
+}
+.time-slot:hover {
+    transform: scale(1.02);
+}
