@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberCut - Agendamento</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .time-slot {
+            transition: all 0.2s ease;
+        }
+        .time-slot:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .card {
+            box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.1), 0 4px 6px -2px rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-black text-white">
+    <script>
+        // Check authentication
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+        if (!loggedInUser) {
+            window.location.href = 'index.html';
+        }
+    </script>
+
+    <div class="container mx-auto px-4 py-12">
+        <div class="flex justify-between items-center mb-10">
+            <h1 class="text-4xl font-bold text-white">Agendamento</h1>
+            <button id="logoutBtn" class="text-red-500 hover:text-red-600 transition-colors duration-200" autocomplete="off">
+                <i class="fas fa-sign-out-alt mr-2"></i>Sair
+            </button>
+        </div>
+        
+        <div class="bg-gray-900 rounded-xl card p-8">
+            <h2 class="text-2xl font-semibold mb-2 text-white">Bem-vindo, <span id="userName" class="text-green-500"></span>!</h2>
+            <p class="mb-8 text-gray-400">Selecione um horário para seu corte:</p>
+            
+            <!-- Day Selection -->
+            <div class="mb-10">
+                <label for="daySelector" class="block text-sm font-medium text-gray-300 mb-3">Selecione o dia:</label>
+                <select id="daySelector" class="bg-gray-800 border border-gray-700 text-white rounded-lg p-3 w-full max-w-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200" autocomplete="off">
+                    <!-- Options will be dynamically generated -->
+                </select>
+            </div>
+
+            <!-- Time Slots Grid -->
+            <div id="timeSlots" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <!-- Time slots will be dynamically inserted here -->
+            </div>
+
+            <!-- No Availability Message -->
+            <div id="noAvailability" class="hidden mt-6 p-4 bg-gray-800 text-red-500 rounded-lg border border-red-500/30">
+                <i class="fas fa-exclamation-circle mr-2"></i>Não há horários disponíveis para este dia. Por favor, selecione outro dia.
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Confirmar Agendamento</h3>
+            <p id="confirmationText" class="mb-4">Você está agendando para <span id="selectedDayTime"></span></p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancelConfirmation" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded">Cancelar</button>
+                <button id="confirmAppointment" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Appointments Section -->
+    <div class="bg-gray-900 rounded-xl card p-8 mt-8">
+        <h2 class="text-2xl font-semibold mb-4">Meus Agendamentos</h2>
+        <div id="myAppointments" class="space-y-3">
+            <!-- Appointments will be listed here -->
+        </div>
+    </div>
+
+    <!-- Email Report Form (Admin Only) -->
+    <div id="adminSection" class="bg-gray-900 rounded-xl card p-8 mt-8 hidden">
+        <h2 class="text-2xl font-semibold mb-4">Relatório de Agendamentos</h2>
+        <form id="reportForm" action="https://formspree.io/f/myyyzzzz" method="POST">
+            <input type="hidden" name="appointments" id="reportData">
+            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">
+                <i class="fas fa-envelope mr-2"></i>Enviar Relatório para gabealvarenga7@gmail.com
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // Display user name
+        document.getElementById('userName').textContent = loggedInUser.name;
+
+        // Show admin section if user is admin
+        if (loggedInUser.email === 'gabealvarenga7@gmail.com') {
+            document.getElementById('adminSection').classList.remove('hidden');
+        }
+
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('loggedInUser');
+            window.location.href = 'index.html';
+        });
+
+        // Generate dates for today + next 6 days
+        const generateDateOptions = () => {
+            const dates = [];
+            const today = new Date();
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                dates.push(date.toISOString().split('T')[0]); // Format as YYYY-MM-DD
+            }
+            return dates;
+        };
+
+        // Mock availability data for 7 days
+        const availability = {
+            [generateDateOptions()[0]]: ["13:30", "14:00", "15:00", "16:30", "17:30"],
+            [generateDateOptions()[1]]: ["09:00", "09:30", "13:30", "14:00", "15:30", "17:00", "18:00"],
+            [generateDateOptions()[2]]: ["10:00", "10:30", "11:00", "13:30", "14:30", "15:00", "16:00", "17:30"],
+            [generateDateOptions()[3]]: ["11:00", "12:00", "13:30", "14:00", "15:00", "16:30"],
+            [generateDateOptions()[4]]: ["09:00", "10:00", "11:00", "13:30", "14:30", "16:00"],
+            [generateDateOptions()[5]]: ["10:30", "11:30", "13:30", "14:00", "15:30", "17:00"],
+            [generateDateOptions()[6]]: ["09:30", "10:30", "13:30", "14:30", "15:30", "16:30"]
+        };
+
+        // Initialize day selector with 7 days
+        function initDaySelector() {
+            const daySelector = document.getElementById('daySelector');
+            const dates = generateDateOptions();
+            
+            dates.forEach((date, index) => {
+                const option = document.createElement('option');
+                option.value = date;
+                
+                if (index === 0) {
+                    option.textContent = 'Hoje';
+                } else if (index === 1) {
+                    option.textContent = 'Amanhã';
+                } else {
+                    const [year, month, day] = date.split('-');
+                    option.textContent = `${day}/${month}`;
+                }
+                
+                daySelector.appendChild(option);
+            });
+        }
+
+        // Initialize appointments if not exists
+        if (!localStorage.getItem('appointments')) {
+            localStorage.setItem('appointments', JSON.stringify([]));
+        }
+
+        // Generate time slots
+        function generateTimeSlots() {
+            const slotsContainer = document.getElementById('timeSlots');
+            const noAvailabilityMsg = document.getElementById('noAvailability');
+            slotsContainer.innerHTML = '';
+            
+            const selectedDay = document.getElementById('daySelector').value;
+            const availableSlots = availability[selectedDay] || [];
+            const appointments = JSON.parse(localStorage.getItem('appointments'));
+            const userAppointments = appointments.filter(a => a.userId === loggedInUser.email);
+            
+            let hasAvailableSlots = false;
+            
+            // Generate slots from 13:30 to 18:00
+            for (let hour = 13; hour <= 18; hour++) {
+                for (let minute = 0; minute < 60; minute += 30) {
+                    if (hour === 18 && minute > 0) continue;
+                    
+            const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            const isAvailable = availableSlots.includes(time);
+            const isBooked = appointments.some(a => a.day === selectedDay && a.time === time);
+
+            // Check if current day and time has passed
+            const selectedDate = new Date(selectedDay);
+            const currentDate = new Date();
+            const isToday = selectedDate.toDateString() === currentDate.toDateString();
+            const currentHours = currentDate.getHours();
+            const currentMinutes = currentDate.getMinutes();
+            const [slotHours, slotMinutes] = time.split(':').map(Number);
+            const isPast = isToday && (
+                slotHours < currentHours || 
+                (slotHours === currentHours && slotMinutes < currentMinutes)
+            );
+
+            if (isAvailable && !isBooked && !isPast) hasAvailableSlots = true;
+
+            const slot = document.createElement('button');
+            slot.className = `time-slot p-4 rounded-lg text-center font-medium ${
+                isBooked || isPast ? 'bg-gray-600 text-white opacity-50 cursor-not-allowed' :
+                isAvailable ? 'bg-green-600 hover:bg-green-700 text-white' : 
+                'bg-red-600 hover:bg-red-700 text-white opacity-50 cursor-not-allowed'
+            }`;
+            slot.textContent = time;
+            slot.disabled = !isAvailable || isBooked || isPast;
+            slot.autocomplete = "off";
+            
+            if (isAvailable && !isBooked && !isPast) {
+                        slot.addEventListener('click', () => {
+                            if (userAppointments.length >= 2) {
+                                alert('Você já tem 2 agendamentos. Remova um para continuar.');
+                                return;
+                            }
+                            document.getElementById('selectedDayTime').textContent = 
+                                document.querySelector('#daySelector option:checked').textContent + ` às ${time}`;
+                            document.getElementById('confirmationModal').classList.remove('hidden');
+                            
+                            // Store temporary selection
+                            slot.dataset.day = selectedDay;
+                            slot.dataset.time = time;
+                        });
+                    }
+                    
+                    slotsContainer.appendChild(slot);
+                }
+            }
+            
+            noAvailabilityMsg.classList.toggle('hidden', hasAvailableSlots);
+            updateMyAppointments();
+        }
+
+        // Update my appointments list
+        function updateMyAppointments() {
+            const container = document.getElementById('myAppointments');
+            container.innerHTML = '';
+            
+            const appointments = JSON.parse(localStorage.getItem('appointments'));
+            const userAppointments = appointments.filter(a => a.userId === loggedInUser.email);
+            
+            if (userAppointments.length === 0) {
+                container.innerHTML = '<p class="text-gray-400">Você não tem agendamentos.</p>';
+                return;
+            }
+            
+            userAppointments.forEach(appointment => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center bg-gray-800 p-3 rounded';
+                div.innerHTML = `
+                    <div>
+                        <span class="font-medium">
+                          ${(() => {
+                            const [year, month, day] = appointment.day.split('-');
+                            const today = new Date();
+                            const selectedDate = new Date(appointment.day);
+                            
+                            if (selectedDate.toDateString() === today.toDateString()) {
+                              return 'Hoje';
+                            } else if (selectedDate.toDateString() === 
+                              new Date(today.setDate(today.getDate()+1)).toDateString()) {
+                              return 'Amanhã';
+                            } else {
+                              return `${day}/${month}`;
+                            }
+                          })()}
+                        </span>
+                        <span class="text-gray-400 mx-2">•</span>
+                        <span>${appointment.time}</span>
+                    </div>
+                    <button class="cancel-btn px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm" 
+                            data-day="${appointment.day}" data-time="${appointment.time}">
+                        <i class="fas fa-trash-alt mr-1"></i>Remover
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+            
+            // Add event listeners to cancel buttons
+            document.querySelectorAll('.cancel-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const day = this.dataset.day;
+                    const time = this.dataset.time;
+                    
+                    const appointments = JSON.parse(localStorage.getItem('appointments'));
+                    const updated = appointments.filter(a => !(a.day === day && a.time === time && a.userId === loggedInUser.email));
+                    localStorage.setItem('appointments', JSON.stringify(updated));
+                    
+                    generateTimeSlots();
+                    handleAppointmentChange();
+                });
+            });
+        }
+
+        // Confirmation modal handlers
+        document.getElementById('cancelConfirmation').addEventListener('click', () => {
+            document.getElementById('confirmationModal').classList.add('hidden');
+        });
+
+        document.getElementById('confirmAppointment').addEventListener('click', () => {
+            const selectedSlot = document.querySelector('.time-slot[data-day][data-time]');
+            if (!selectedSlot) return;
+            
+            const day = selectedSlot.dataset.day;
+            const time = selectedSlot.dataset.time;
+            
+            const appointments = JSON.parse(localStorage.getItem('appointments'));
+            appointments.push({
+                day,
+                time,
+                userId: loggedInUser.email,
+                userName: loggedInUser.name,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem('appointments', JSON.stringify(appointments));
+            
+            document.getElementById('confirmationModal').classList.add('hidden');
+            generateTimeSlots();
+            handleAppointmentChange();
+            
+            // Show success message
+            alert(`✅ Agendamento confirmado para ${time}!`);
+        });
+
+        /**
+         * Sends appointment report via Formspree
+         * @returns {Promise} Fetch promise
+         */
+        function sendReport() {
+            try {
+                const formData = new FormData(document.getElementById('reportForm'));
+                formData.append('_subject', `Relatório de Agendamentos - ${new Date().toLocaleDateString('pt-BR')}`);
+                formData.append('_replyto', 'no-reply@barbercut.com');
+                
+                return fetch('https://formspree.io/f/myyyzzzz', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('Error sending report:', error);
+                return Promise.reject(error);
+            }
+        }
+
+        /**
+         * Handles appointment changes and triggers report generation
+         * - Formats report data
+         * - Updates hidden form field
+         * - Sends report if admin is logged in
+         */
+        function handleAppointmentChange() {
+            try {
+                const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+                
+                // Format detailed report with statistics
+                const report = {
+                    timestamp: new Date().toISOString(),
+                    date: new Date().toLocaleString('pt-BR'),
+                    totalAppointments: appointments.length,
+                    uniqueClients: new Set(appointments.map(a => a.userId)).size,
+                    upcomingAppointments: appointments.filter(a => {
+                        const apptDate = new Date(`${a.day}T${a.time}:00`);
+                        return apptDate > new Date();
+                    }).length,
+                    appointments: appointments.map(a => ({
+                        date: a.day,
+                        time: a.time,
+                        client: a.userName,
+                        email: a.userId
+                    }))
+                };
+                
+                // Set report data in hidden form field
+                document.getElementById('reportData').value = JSON.stringify(report, null, 2);
+                
+                // Only send if admin is logged in
+                if (loggedInUser?.email === 'gabealvarenga7@gmail.com') {
+                    sendReport()
+                        .then(() => console.log('Relatório enviado com sucesso'))
+                        .catch(error => console.error('Erro ao enviar relatório:', error));
+                }
+            } catch (error) {
+                console.error('Erro ao processar agendamentos:', error);
+            }
+        }
+
+        document.getElementById('reportForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            sendReport()
+                .then(() => alert('Relatório enviado para gabealvarenga7@gmail.com!'))
+                .catch(() => alert('Erro ao enviar relatório. Tente novamente.'));
+        });
+
+        // Initialize day selector and slots
+        initDaySelector();
+        generateTimeSlots();
+
+        // Update slots when day changes
+        document.getElementById('daySelector').addEventListener('change', generateTimeSlots);
+    </script>
+</body>
+</html>
