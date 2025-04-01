@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <!-- EmailJS Script -->
+  <script type="text/javascript" src="https://cdn.emailjs.com/sdk/3.0.0/email.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberCut - Barbearia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .bg-blur {
+            filter: blur(5px);
+            -webkit-filter: blur(5px);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Hero Section -->
+    <div class="relative h-screen flex items-center justify-center">
+        <!-- Blurred Background Image -->
+        <div class="absolute inset-0 bg-blur bg-cover bg-center" 
+             style="background-image: url('https://cnicursos.com.br/wp-content/uploads/2020/03/bonito-homem-barbudo-na-barbearia-barbeiro-no-trabalho_151355-3836.jpg')"></div>
+        
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-black/50"></div>
+        
+        <!-- Content -->
+        <div class="relative z-10 text-center px-4">
+            <h1 class="text-6xl font-bold text-white mb-8">BARBER<span class="text-gray-300">CUT</span></h1>
+            <p class="text-xl text-gray-300 mb-12">Cortes de cabelo e barba premium</p>
+            
+            <!-- Login Button -->
+            <button id="loginBtn" class="bg-white text-black px-8 py-3 rounded-full font-medium hover:bg-gray-200 transition-all">
+                <i class="fas fa-sign-in-alt mr-2"></i> Login
+            </button>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
+            <div id="loginError" class="text-red-500 mb-4 hidden"></div>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2" for="email">Email</label>
+                    <input type="email" id="email" class="w-full px-3 py-2 border rounded-lg" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2" for="password">Senha</label>
+                    <input type="password" id="password" class="w-full px-3 py-2 border rounded-lg" required>
+                </div>
+                <button type="submit" class="w-full bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition">
+                    Entrar
+                </button>
+            </form>
+            <p class="text-center mt-4">Não tem conta? <button id="showRegister" class="text-blue-600 hover:underline">Registre-se</button></p>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registerModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6 text-center">Registro</h2>
+            <div id="registerError" class="text-red-500 mb-4 hidden"></div>
+            <form id="registerForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2" for="name">Nome</label>
+                    <input type="text" id="name" class="w-full px-3 py-2 border rounded-lg" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2" for="regEmail">Email</label>
+                    <input type="email" id="regEmail" class="w-full px-3 py-2 border rounded-lg" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2" for="regPassword">Senha</label>
+                    <input type="password" id="regPassword" class="w-full px-3 py-2 border rounded-lg" required>
+                </div>
+                <button type="submit" class="w-full bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition">
+                    Registrar
+                </button>
+            </form>
+            <p class="text-center mt-4">Já tem conta? <button id="showLogin" class="text-blue-600 hover:underline">Login</button></p>
+        </div>
+    </div>
+
+    <script>
+        // Modal Toggle
+        const loginBtn = document.getElementById('loginBtn');
+        const loginModal = document.getElementById('loginModal');
+        const loginForm = document.getElementById('loginForm');
+
+        loginBtn.addEventListener('click', () => {
+            loginModal.classList.remove('hidden');
+        });
+
+        loginModal.addEventListener('click', (e) => {
+            if (e.target === loginModal) {
+                loginModal.classList.add('hidden');
+            }
+        });
+
+        // Modal Toggles
+        const showRegister = document.getElementById('showRegister');
+        const showLogin = document.getElementById('showLogin');
+        const registerModal = document.getElementById('registerModal');
+
+        showRegister.addEventListener('click', () => {
+            loginModal.classList.add('hidden');
+            registerModal.classList.remove('hidden');
+        });
+
+        showLogin.addEventListener('click', () => {
+            registerModal.classList.add('hidden');
+            loginModal.classList.remove('hidden');
+        });
+
+        // Registration Form Submission
+        const registerForm = document.getElementById('registerForm');
+        const registerError = document.getElementById('registerError');
+
+        registerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+
+            // Validate inputs
+            if (!email.includes('@')) {
+                registerError.textContent = 'Por favor, insira um email válido';
+                registerError.classList.remove('hidden');
+                return;
+            }
+
+            if (password.length < 6) {
+                registerError.textContent = 'A senha deve ter pelo menos 6 caracteres';
+                registerError.classList.remove('hidden');
+                return;
+            }
+
+            // Check if user already exists
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            const userExists = users.some(user => user.email === email);
+            
+            if (userExists) {
+                registerError.textContent = 'Este email já está registrado';
+                registerError.classList.remove('hidden');
+                return;
+            }
+
+            // Save new user
+            users.push({ name, email, password });
+            localStorage.setItem('users', JSON.stringify(users));
+
+            // Show success and switch to login
+            registerError.textContent = 'Registro bem-sucedido! Faça login agora';
+            registerError.classList.remove('hidden');
+            registerError.classList.add('text-green-500');
+            setTimeout(() => {
+                registerModal.classList.add('hidden');
+                loginModal.classList.remove('hidden');
+                registerError.classList.add('hidden');
+                registerError.classList.remove('text-green-500');
+            }, 2000);
+        });
+
+        // Login Form Submission
+        const loginError = document.getElementById('loginError');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // Get users from storage
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            const user = users.find(user => user.email === email && user.password === password);
+            
+            if (user) {
+                localStorage.setItem('loggedInUser', JSON.stringify(user));
+                window.location.href = 'schedule.html';
+            } else {
+                loginError.textContent = 'Credenciais inválidas! Verifique seu email e senha';
+                loginError.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
